@@ -6,7 +6,7 @@ edition = "2021"
 description = "Rewrite of I2C driver for LM1602 LCD displays based on port of LiquidCrystal_I2C.h."
 homepage = "https://github.com/guanicoe/LiquidCrystal_I2C-rs"
 keywords = ["lcd", "LM1602", "embedded", "I2C", "LiquidCrystal"]
-license = "GPL-3.0 license"
+license = "GPL"
 readme = "README.md"
 repository = "https://github.com/guanicoe/LiquidCrystal_I2C-rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
