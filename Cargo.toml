@@ -1,6 +1,6 @@
 [package]
 name = "liquidcrystal_i2c-rs"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Guanicoe <guanicoe@m.me>"]
 edition = "2021"
 description = "Rewrite of I2C driver for LM1602 LCD displays based on port of LiquidCrystal_I2C.h."

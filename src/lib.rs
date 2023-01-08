@@ -24,6 +24,8 @@
 //     lcd.print("Hello world!").unwrap();
 // }
 
+// Need to update from https://github.com/blackhack/LCD_I2C/blob/master/src/LCD_I2C.cpp
+
 // ```
 
 use embedded_hal::blocking::{i2c, delay::DelayMs};
@@ -163,24 +165,24 @@ impl DisplayControl {
 
 
 
-pub struct Lcd<'a, I, D>
+pub struct Lcd<I, D>
 where
     I: i2c::Write,
     D: DelayMs<u8>,
 {
-    i2c: &'a mut I,
+    i2c: I,
     control: DisplayControl,
     address: u8,
-    delay: &'a mut D,
+    delay: D,
 }
 
-impl<'a, I, D> Lcd<'a, I, D>
+impl<I, D> Lcd<I, D>
 where
     I: i2c::Write,
     D: DelayMs<u8>,
     {
 
-    pub fn new(i2c: &'a mut I, address: u8, delay: &'a mut D) -> Result<Self, <I as i2c::Write>::Error>  {
+    pub fn new(i2c:  I, address: u8, delay:  D) -> Result<Self, <I as i2c::Write>::Error>  {
         let mut display = Lcd {
             i2c,
             control: DisplayControl::new(),
