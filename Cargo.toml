@@ -12,4 +12,4 @@ repository = "https://github.com/guanicoe/LiquidCrystal_I2C-rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-embedded-hal = "0.2.7"
+rppal = "0.14.1"
