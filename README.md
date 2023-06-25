@@ -4,22 +4,20 @@ Tested on raspberry pi.
 Example of use:
 
 ```rust
-use rppal::{gpio::Gpio, i2c::I2c};
+use liquidcrystal_i2c_rs::{Backlight, Display, Lcd};
 
-static  LCD_ADDRESS: u8 = 0x27;
+static LCD_ADDRESS: u16 = 0x3f;
 
-fn setup() {
-
-}
 fn main() {
-    let mut i2c = I2c::new().unwrap();
-    let mut delay = rppal::hal::Delay;
+    let i2c = rppal::i2c::I2c::new().unwrap();
 
-    let mut lcd = screen::Lcd::new(&mut i2c, LCD_ADDRESS, &mut delay).unwrap();
-    
-    lcd.set_display(screen::Display::On).unwrap();
-    lcd.set_backlight(screen::Backlight::On).unwrap();
-    lcd.print("Hello world!").unwrap();
+    let mut lcd = Lcd::new(i2c, LCD_ADDRESS).unwrap();
+
+    lcd.set_display(Display::On).unwrap();
+    lcd.set_backlight(Backlight::On).unwrap();
+
+    lcd.clear().unwrap();
+    lcd.print("Hello World!").unwrap();
 }
 
 ```
