@@ -1,32 +1,9 @@
 // Port of the liquide crystall I2C lirary found for arduino in rust.
-// Tested on raspberry pi.
-
-// Example of use:
-
-// ```rust
-// use rppal::{gpio::Gpio, i2c::I2c};
-
-// static  LCD_ADDRESS: u8 = 0x27;
-
-// fn setup() {
-
-// }
-// fn main() {
-//     let mut i2c = I2c::new().unwrap();
-//     let mut delay = rppal::hal::Delay;
-
-//     let mut lcd = screen::Lcd::new(&mut i2c, LCD_ADDRESS, &mut delay).unwrap();
-
-//     lcd.set_display(screen::Display::On).unwrap();
-//     lcd.set_backlight(screen::Backlight::On).unwrap();
-//     lcd.print("Hello world!").unwrap();
-// }
-
-// ```
-
-use rppal::i2c::{Error as I2cError, I2c};
-use std::thread::sleep;
-use std::time::Duration;
+// Tested on raspberry pi and ESP32-WROOM-32.
+#[derive(Debug)]
+pub enum I2cError {
+    Io
+}
 
 /// Controls the visibilty of the non-blinking cursor, which is basically an _ **after** the cursor position.
 /// The cursor position represents where the next character will show up.
@@ -107,6 +84,7 @@ pub enum Shift {
 }
 
 #[derive(Copy, Clone, Debug)]
+#[allow(dead_code)]
 pub enum BitMode {
     Bit4 = 0x00,
     Bit8 = 0x10,
@@ -130,6 +108,14 @@ pub enum BitAction {
     Enable = 0x04,
     ReadWrite = 0x02,
     RegisterSelect = 0x01,
+}
+pub trait Delay {
+    /// Delay for given amount of time (in microseconds).
+    fn delay_us(&mut self, delay_usec: u32);
+}
+
+pub trait I2C {
+    fn write(&mut self, data: u8) -> Result<usize, I2cError>;
 }
 
 pub struct DisplayControl {
@@ -156,18 +142,16 @@ impl DisplayControl {
     }
 }
 
-pub struct Lcd {
-    i2c: I2c,
+pub struct Lcd<HW: Delay + I2C> {
+    hw: HW,
     control: DisplayControl,
-    address: u16,
 }
 
-impl Lcd {
-    pub fn new(i2c: I2c, address: u16) -> Result<Self, I2cError> {
+impl<HW: Delay + I2C> Lcd<HW> {
+    pub fn new(hw: HW) -> Result<Self, I2cError> {
         let mut display = Self {
-            i2c,
+            hw,
             control: DisplayControl::new(),
-            address,
         };
         display.init()?;
         Ok(display)
@@ -175,31 +159,28 @@ impl Lcd {
 
     // Initialize the display for the first time after power up
     fn init(&mut self) -> Result<(), I2cError> {
-        //  Set the i2c slave address
-        let _ = self.i2c.set_slave_address(self.address);
-
         // SEE PAGE 45/46 FOR INITIALIZATION SPECIFICATION!
         // according to datasheet, we need at least 40ms after power rises above 2.7V
         // before sending commands. Arduino can turn on way before 4.5V so we'll wait 50
-        sleep(Duration::from_millis(50));
+        self.hw.delay_us(50);
 
         self.expander_write(self.control.backlight as u8)?;
-        sleep(Duration::from_millis(1));
+        self.hw.delay_us(1);
 
         // Send the initial command sequence according to the HD44780 datasheet
         let mode_8bit = Mode::FUNCTIONSET as u8 | BitMode::Bit8 as u8;
         self.write4bits(mode_8bit)?;
-        sleep(Duration::from_millis(5));
+        self.hw.delay_us(5);
 
         self.write4bits(mode_8bit)?;
-        sleep(Duration::from_millis(5));
+        self.hw.delay_us(5);
 
         self.write4bits(mode_8bit)?;
-        sleep(Duration::from_millis(5));
+        self.hw.delay_us(5);
 
         let mode_4bit = Mode::FUNCTIONSET as u8 | BitMode::Bit4 as u8;
         self.write4bits(mode_4bit)?;
-        sleep(Duration::from_millis(5));
+        self.hw.delay_us(5);
 
         let lines_font = Mode::FUNCTIONSET as u8
             | BitMode::Bit4 as u8
@@ -226,7 +207,7 @@ impl Lcd {
     */
     pub fn clear(&mut self) -> Result<(), I2cError> {
         self.command(Mode::CLEARDISPLAY as u8)?;
-        sleep(Duration::from_millis(2));
+        self.hw.delay_us(2);
         Ok(())
     }
 
@@ -239,7 +220,7 @@ impl Lcd {
     */
     pub fn home(&mut self) -> Result<(), I2cError> {
         self.command(Mode::RETURNHOME as u8)?;
-        sleep(Duration::from_millis(2));
+        self.hw.delay_us(2);
         Ok(())
     }
 
@@ -343,18 +324,17 @@ impl Lcd {
     }
 
     fn expander_write(&mut self, data: u8) -> Result<usize, I2cError> {
-        Ok(self
-            .i2c
-            .write(&[data | self.control.backlight as u8])
-            .unwrap())
+        self
+            .hw
+            .write(data | self.control.backlight as u8)
     }
 
     fn pulse_enable(&mut self, data: u8) -> Result<(), I2cError> {
         self.expander_write(data | BitAction::Enable as u8)?; // En high
-        sleep(Duration::from_micros(1));
+        self.hw.delay_us(1);
 
         self.expander_write(data & !(BitAction::Enable as u8))?; // En low
-        sleep(Duration::from_micros(1));
+        self.hw.delay_us(1);
 
         Ok(())
     }
