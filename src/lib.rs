@@ -250,8 +250,9 @@ impl Lcd {
 
     Returns a `Result` that will report I2C errors, if any.
     */
-    pub fn set_cursor_position(&mut self, col: u8, row: u8) -> Result<(), I2cError> {
-        self.command(Mode::SETDDRAMADDR as u8 | (col + row * 0x40))?;
+    pub fn set_cursor_position(&mut self, col: u8, row: usize) -> Result<(), I2cError> {
+        let row_offsets = [0x00, 0x40, 0x14, 0x54];
+        self.command(Mode::SETDDRAMADDR as u8 | (col + row_offsets[row] * 0x40))?;
         Ok(())
     }
 
