@@ -322,6 +322,10 @@ where
     */
     pub fn print(&mut self, s: &str) -> Result<(), <I as i2c::Write>::Error> {
         for c in s.chars() {
+            let row = 0;
+            if c.to_string() == "\n" {
+                self.set_cursor_position(0, row + 1)?;
+            };
             self.write(c as u8)?;
         }
 
