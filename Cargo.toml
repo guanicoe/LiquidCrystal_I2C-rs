@@ -1,5 +1,5 @@
 [package]
-name = "liquidcrystal_i2c-rs"
+name = "i2c_lcd"
 version = "0.1.0"
 authors = ["Guanicoe <guanicoe@m.me>"]
 edition = "2021"
@@ -8,7 +8,7 @@ homepage = "https://github.com/guanicoe/LiquidCrystal_I2C-rs"
 keywords = ["lcd", "LM1602", "embedded", "I2C", "LiquidCrystal"]
 license = "GPL-3.0-or-later"
 readme = "README.md"
-repository = "https://github.com/guanicoe/LiquidCrystal_I2C-rs"
+repository = "https://github.com/mn-xd/i2c_lcd"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
