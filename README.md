@@ -1,23 +1,25 @@
-Port of the liquide crystall I2C lirary found for arduino in rust. 
-Tested on raspberry pi. 
+
+### I2C LCD
+Port of the liquide crystall I2C lirary found for arduino in rust.
+*Supports 4x16 Displays.*
+Tested on raspberry pi and esp32. 
 
 Example of use:
 
 ```rust
-use liquidcrystal_i2c_rs::{Backlight, Display, Lcd};
+use rppal::{gpio::Gpio, i2c::I2c};
 
-static LCD_ADDRESS: u16 = 0x3f;
+static  LCD_ADDRESS: u8 = 0x27;
 
 fn main() {
-    let i2c = rppal::i2c::I2c::new().unwrap();
+    let mut i2c = I2c::new().unwrap();
+    let mut delay = rppal::hal::Delay;
 
-    let mut lcd = Lcd::new(i2c, LCD_ADDRESS).unwrap();
+    let mut lcd = i2c_lcd::Lcd::new(&mut i2c, LCD_ADDRESS, &mut delay).unwrap();
 
-    lcd.set_display(Display::On).unwrap();
-    lcd.set_backlight(Backlight::On).unwrap();
-
-    lcd.clear().unwrap();
-    lcd.print("Hello World!").unwrap();
+    lcd.set_display(screen::Display::On).unwrap();
+    lcd.set_backlight(screen::Backlight::On).unwrap();
+    lcd.print("Hello world!").unwrap();
 }
 
 ```

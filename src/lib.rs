@@ -24,7 +24,7 @@
 
 // ```
 
-use rppal::i2c::{Error as I2cError, I2c};
+use embedded_hal::blocking::{delay::DelayMs, i2c};
 use std::thread::sleep;
 use std::time::Duration;
 
@@ -156,50 +156,61 @@ impl DisplayControl {
     }
 }
 
-pub struct Lcd {
-    i2c: I2c,
+pub struct Lcd<'a, I, D>
+where
+    I: i2c::Write,
+    D: DelayMs<u8>,
+{
+    i2c: &'a mut I,
     control: DisplayControl,
-    address: u16,
+    address: u8,
+    delay: &'a mut D,
 }
 
-impl Lcd {
-    pub fn new(i2c: I2c, address: u16) -> Result<Self, I2cError> {
+impl<'a, I, D> Lcd<'a, I, D>
+where
+    I: i2c::Write,
+    D: DelayMs<u8>,
+{
+    pub fn new(
+        i2c: &'a mut I,
+        address: u8,
+        delay: &'a mut D,
+    ) -> Result<Self, <I as i2c::Write>::Error> {
         let mut display = Self {
             i2c,
             control: DisplayControl::new(),
             address,
+            delay,
         };
         display.init()?;
         Ok(display)
     }
 
-    // Initialize the display for the first time after power up
-    fn init(&mut self) -> Result<(), I2cError> {
+    fn init(&mut self) -> Result<(), <I as i2c::Write>::Error> {
         //  Set the i2c slave address
-        let _ = self.i2c.set_slave_address(self.address);
-
         // SEE PAGE 45/46 FOR INITIALIZATION SPECIFICATION!
         // according to datasheet, we need at least 40ms after power rises above 2.7V
         // before sending commands. Arduino can turn on way before 4.5V so we'll wait 50
-        sleep(Duration::from_millis(50));
+        self.delay.delay_ms(50);
 
         self.expander_write(self.control.backlight as u8)?;
-        sleep(Duration::from_millis(1));
+        self.delay.delay_ms(1);
 
         // Send the initial command sequence according to the HD44780 datasheet
         let mode_8bit = Mode::FUNCTIONSET as u8 | BitMode::Bit8 as u8;
         self.write4bits(mode_8bit)?;
-        sleep(Duration::from_millis(5));
+        self.delay.delay_ms(5);
 
         self.write4bits(mode_8bit)?;
-        sleep(Duration::from_millis(5));
+        self.delay.delay_ms(5);
 
         self.write4bits(mode_8bit)?;
-        sleep(Duration::from_millis(5));
+        self.delay.delay_ms(5);
 
         let mode_4bit = Mode::FUNCTIONSET as u8 | BitMode::Bit4 as u8;
         self.write4bits(mode_4bit)?;
-        sleep(Duration::from_millis(5));
+        self.delay.delay_ms(5);
 
         let lines_font = Mode::FUNCTIONSET as u8
             | BitMode::Bit4 as u8
@@ -224,9 +235,9 @@ impl Lcd {
 
     Returns a `Result` that will report I2C errors, if any.
     */
-    pub fn clear(&mut self) -> Result<(), I2cError> {
+    pub fn clear(&mut self) -> Result<(), <I as i2c::Write>::Error> {
         self.command(Mode::CLEARDISPLAY as u8)?;
-        sleep(Duration::from_millis(2));
+        self.delay.delay_ms(2);
         Ok(())
     }
 
@@ -237,9 +248,9 @@ impl Lcd {
 
     Returns a `Result` that will report I2C errors, if any.
     */
-    pub fn home(&mut self) -> Result<(), I2cError> {
+    pub fn home(&mut self) -> Result<(), <I as i2c::Write>::Error> {
         self.command(Mode::RETURNHOME as u8)?;
-        sleep(Duration::from_millis(2));
+        self.delay.delay_ms(2);
         Ok(())
     }
 
@@ -250,7 +261,11 @@ impl Lcd {
 
     Returns a `Result` that will report I2C errors, if any.
     */
-    pub fn set_cursor_position(&mut self, col: u8, row: usize) -> Result<(), I2cError> {
+    pub fn set_cursor_position(
+        &mut self,
+        col: u8,
+        row: usize,
+    ) -> Result<(), <I as i2c::Write>::Error> {
         let row_offsets = [0x00, 0x40, 0x14, 0x54];
         self.command(Mode::SETDDRAMADDR as u8 | (col + row_offsets[row] * 0x40))?;
         Ok(())
@@ -263,7 +278,7 @@ impl Lcd {
 
     Returns a `Result` that will report I2C errors, if any.
     */
-    pub fn set_display(&mut self, display: Display) -> Result<(), I2cError> {
+    pub fn set_display(&mut self, display: Display) -> Result<(), <I as i2c::Write>::Error> {
         self.control.display = display;
         self.write_display_control()
     }
@@ -275,7 +290,7 @@ impl Lcd {
 
     Returns a `Result` that will report I2C errors, if any.
     */
-    pub fn set_cursor(&mut self, cursor: Cursor) -> Result<(), I2cError> {
+    pub fn set_cursor(&mut self, cursor: Cursor) -> Result<(), <I as i2c::Write>::Error> {
         self.control.cursor = cursor;
         self.write_display_control()
     }
@@ -287,14 +302,14 @@ impl Lcd {
 
     Returns a `Result` that will report I2C errors, if any.
     */
-    pub fn set_blink(&mut self, blink: Blink) -> Result<(), I2cError> {
+    pub fn set_blink(&mut self, blink: Blink) -> Result<(), <I as i2c::Write>::Error> {
         self.control.blink = blink;
         self.write_display_control()
     }
 
-    pub fn set_backlight(&mut self, backlight: Backlight) -> Result<usize, I2cError> {
+    pub fn set_backlight(&mut self, backlight: Backlight) -> Result<(), <I as i2c::Write>::Error> {
         self.control.backlight = backlight;
-        Ok(self.expander_write(0)?)
+        self.expander_write(0)
     }
 
     /*********** mid level commands, for sending data/cmds */
@@ -305,7 +320,7 @@ impl Lcd {
     # Errors
     Returns a `Result` that will report I2C errors, if any.
     */
-    pub fn print(&mut self, s: &str) -> Result<(), I2cError> {
+    pub fn print(&mut self, s: &str) -> Result<(), <I as i2c::Write>::Error> {
         for c in s.chars() {
             self.write(c as u8)?;
         }
@@ -314,22 +329,22 @@ impl Lcd {
     }
 
     // Set one of the display's control options and then send the updated set of options to the display
-    fn write_display_control(&mut self) -> Result<(), I2cError> {
+    fn write_display_control(&mut self) -> Result<(), <I as i2c::Write>::Error> {
         self.command(Mode::DISPLAYCONTROL as u8 | self.control.value())
     }
 
     // Send two bytes to the display
-    fn write(&mut self, value: u8) -> Result<(), I2cError> {
+    fn write(&mut self, value: u8) -> Result<(), <I as i2c::Write>::Error> {
         self.send(value, BitAction::RegisterSelect)
     }
 
-    fn command(&mut self, value: u8) -> Result<(), I2cError> {
+    fn command(&mut self, value: u8) -> Result<(), <I as i2c::Write>::Error> {
         self.send(value, BitAction::Command)
     }
 
     /************ low level data pushing commands **********/
 
-    fn send(&mut self, data: u8, mode: BitAction) -> Result<(), I2cError> {
+    fn send(&mut self, data: u8, mode: BitAction) -> Result<(), <I as i2c::Write>::Error> {
         let high_bits: u8 = data & 0xf0;
         let low_bits: u8 = (data << 4) & 0xf0;
         self.write4bits(high_bits | mode as u8)?;
@@ -337,20 +352,18 @@ impl Lcd {
         Ok(())
     }
 
-    fn write4bits(&mut self, value: u8) -> Result<(), I2cError> {
+    fn write4bits(&mut self, value: u8) -> Result<(), <I as i2c::Write>::Error> {
         self.expander_write(value)?;
         self.pulse_enable(value)?;
         Ok(())
     }
 
-    fn expander_write(&mut self, data: u8) -> Result<usize, I2cError> {
-        Ok(self
-            .i2c
-            .write(&[data | self.control.backlight as u8])
-            .unwrap())
+    fn expander_write(&mut self, data: u8) -> Result<(), <I as i2c::Write>::Error> {
+        self.i2c
+            .write(self.address, &[data | self.control.backlight as u8])
     }
 
-    fn pulse_enable(&mut self, data: u8) -> Result<(), I2cError> {
+    fn pulse_enable(&mut self, data: u8) -> Result<(), <I as i2c::Write>::Error> {
         self.expander_write(data | BitAction::Enable as u8)?; // En high
         sleep(Duration::from_micros(1));
 
