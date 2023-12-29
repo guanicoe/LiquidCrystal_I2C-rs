@@ -321,10 +321,10 @@ where
     Returns a `Result` that will report I2C errors, if any.
     */
     pub fn print(&mut self, s: &str) -> Result<(), <I as i2c::Write>::Error> {
-        let row = 0.clamp(0, 3);
+        let row = 0;
         for c in s.chars() {
             if c.to_string() == "\n" {
-                self.set_cursor_position(0, row + 1)?;
+                self.set_cursor_position(0, (row + 1).clamp(0, 3))?;
             } else {
                 self.write(c as u8)?;
             }
