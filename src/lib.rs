@@ -267,7 +267,7 @@ where
         row: usize,
     ) -> Result<(), <I as i2c::Write>::Error> {
         let row_offsets = [0x00, 0x40, 0x14, 0x54];
-        self.command(Mode::SETDDRAMADDR as u8 | (col + row_offsets[row] * 0x40))?;
+        self.command(Mode::SETDDRAMADDR as u8 | (col + row_offsets[row]))?;
         Ok(())
     }
 
