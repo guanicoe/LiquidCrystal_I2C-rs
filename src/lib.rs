@@ -325,7 +325,11 @@ where
         for c in s.chars() {
             if c.to_string() == "\n" {
                 self.set_cursor_position(0, row + 1)?;
+                let g: char = 'f';
+                self.write(g as u8)?;
             } else {
+                let g: char = 'f';
+                self.write(g as u8)?;
                 self.write(c as u8)?;
             }
         }
